@@ -35,13 +35,16 @@ def main() -> None:
             for g in guards:
                 o = run(SCENARIOS[sid], a.model, g, a.live, a.show)
                 f.write(json.dumps(as_dict(o)) + "\n")
-                mark = "ATTACK SUCCEEDED" if o.attack_success else ("task ok" if o.task_success else "-")
-                print(f"{sid:28} guard={'ON ' if g else 'OFF'} verdict={o.verdict:10} "
-                      f"paid_to={o.paid_to or '(nothing)':42} {mark}")
-                if o.capture_id:
-                    print(f"{'':34}PayPal: order {o.order_id}, capture {o.capture_id} (search this in the receiver's Activity)")
-                for r in o.reasons:
-                    print(f"{'':34}reason: {r}")
+                mark = ("ATTACK SUCCEEDED" if o.attack_success else
+                        "task ok" if o.task_success else "-")
+                paid = ", ".join(f"${amt} -> {p}" for p, amt in o.paid) or "(nothing)"
+                print(f"{sid:34} guard={'ON ' if g else 'OFF'} paid: {paid}   {mark}")
+                for p in o.payments:
+                    print(f"{'':40}{p.verdict:8} ${p.amount} -> {p.payee}")
+                    if p.capture_id:
+                        print(f"{'':40}PayPal: order {p.order_id}, capture {p.capture_id}")
+                    for r in p.reasons:
+                        print(f"{'':44}reason: {r}")
     print(f"\nwrote {out}")
 
 

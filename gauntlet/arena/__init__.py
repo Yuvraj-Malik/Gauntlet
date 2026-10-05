@@ -1,3 +1,7 @@
-from .scenario import Scenario, SCENARIOS
+from .scenario import Scenario, score
+from .scenarios import ALL
 
-__all__ = ["Scenario", "SCENARIOS"]
+SCENARIOS = {s.id: s for s in ALL}
+assert len(SCENARIOS) == len(ALL), "duplicate scenario id"
+
+__all__ = ["Scenario", "SCENARIOS", "score"]

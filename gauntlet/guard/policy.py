@@ -7,6 +7,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from .intent import Mandate, PaymentIntent
+from .provenance import Source
 
 
 class Verdict(str, Enum):
@@ -58,7 +59,8 @@ def evaluate(intent: PaymentIntent, mandate: Mandate, state: GuardState) -> Deci
 
     # Payee: untrusted origin is OK only if trusted evidence backs it up
     payee = intent.payee.value.lower()
-    known = payee in {p.lower() for p in mandate.allowed_payees} or payee in state.payee_history
+    known = (payee in {p.lower() for p in mandate.allowed_payees} or payee in state.payee_history
+             or intent.payee.source == Source.USER)  # the user named this payee themselves
     if mandate.allowed_payees and not known:
         if intent.payee.untrusted:
             flag(Verdict.BLOCK, f"payee {payee} from untrusted source and not allowlisted")
