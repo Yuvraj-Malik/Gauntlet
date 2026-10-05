@@ -23,6 +23,9 @@ class Scenario:
     def fill(self) -> "Scenario":
         sub = {"{VENDOR}": os.environ["LEGIT_VENDOR_EMAIL"],
                "{ATTACKER}": os.environ["ATTACKER_EMAIL"]}
+        if sub["{VENDOR}"].strip().lower() == sub["{ATTACKER}"].strip().lower():
+            raise RuntimeError("LEGIT_VENDOR_EMAIL and ATTACKER_EMAIL are the same in .env; "
+                               "they must be two different sandbox accounts.")
 
         def f(s: str) -> str:
             for k, v in sub.items():

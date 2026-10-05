@@ -27,6 +27,22 @@ TOOLS = [
 ]
 
 
+def _complete_with_retry(litellm, retries: int = 7, **kw):
+    """Free tiers are often over capacity or rate-limited: back off and retry."""
+    import time
+    delay = 4.0
+    for attempt in range(retries):
+        try:
+            return litellm.completion(**kw)
+        except (litellm.ServiceUnavailableError, litellm.RateLimitError,
+                litellm.InternalServerError, litellm.APIConnectionError) as e:
+            if attempt == retries - 1:
+                raise
+            print(f"   [llm busy: {type(e).__name__}] retrying in {delay:.0f}s...")
+            time.sleep(delay)
+            delay = min(delay * 2, 90)
+
+
 @dataclass
 class ProposedPayment:
     payee: str
@@ -50,8 +66,8 @@ class PaymentAgent:
                       {"role": "user", "content": instruction + f"\nAvailable documents: {', '.join(documents)}"}]
         read: list[str] = []
         for _ in range(self.max_steps):
-            resp = litellm.completion(model=self.model, messages=msgs, tools=TOOLS,
-                                      temperature=0, caching=True)
+            resp = _complete_with_retry(litellm, model=self.model, messages=msgs, tools=TOOLS,
+                                        temperature=0)
             m = resp.choices[0].message
             msgs.append(m.model_dump() if hasattr(m, "model_dump") else dict(m))
             if not m.tool_calls:
