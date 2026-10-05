@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
+from .binding import check_amount
 from .intent import Mandate, PaymentIntent
 from .policy import Decision, GuardState, Verdict, evaluate, worst
 
@@ -13,13 +14,20 @@ Verifier = Callable[[str, str], "tuple[bool, str]"]
 
 class Guard:
     def __init__(self, mandate: Mandate, state: Optional[GuardState] = None,
-                 verifier: Optional[Verifier] = None):
+                 verifier: Optional[Verifier] = None, bind_amounts: bool = True):
+        self.bind_amounts = bind_amounts
         self.mandate = mandate
         self.state = state or GuardState()
         self.verifier = verifier
 
-    def check(self, intent: PaymentIntent) -> Decision:
+    def check(self, intent: PaymentIntent, docs_read: Optional[list[str]] = None) -> Decision:
+        """`docs_read`: raw text of documents the agent read, for invoice binding (parsed, never obeyed)."""
         decision = evaluate(intent, self.mandate, self.state)
+        if decision.verdict != Verdict.BLOCK and self.bind_amounts:
+            why = check_amount(intent.amount.value, self.mandate.instruction, docs_read or [])
+            if why:
+                decision.verdict = worst(decision.verdict, Verdict.STEP_UP)
+                decision.reasons.append(why)
         if decision.verdict == Verdict.BLOCK or self.verifier is None:
             return decision
         ok, why = self.verifier(self.mandate.instruction, intent.summary())

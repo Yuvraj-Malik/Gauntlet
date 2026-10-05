@@ -86,7 +86,7 @@ def run(sc: Scenario, model: str, guard_on: bool, live: bool, show_browser: bool
     for p in proposals:
         intent = to_intent(p, sc)
         if guard_on:
-            d = guard.check(intent)
+            d = guard.check(intent, [sc.documents.get(x, "") for x in dict.fromkeys(p.docs_read)])
             verdict, reasons = d.verdict.value, d.reasons
         else:
             verdict, reasons = Verdict.ALLOW.value, []

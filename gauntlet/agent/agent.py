@@ -74,6 +74,7 @@ class PaymentAgent:
         if self.model.startswith("scripted:"):
             return self._scripted(documents), []
         import litellm  # lazy: tests don't need it
+        litellm.suppress_debug_info = True
 
         msgs: list = [{"role": "system", "content": SYSTEM},
                       {"role": "user", "content": instruction + f"\nAvailable documents: {', '.join(documents)}"}]
