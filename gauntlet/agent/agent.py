@@ -53,9 +53,10 @@ class ProposedPayment:
 
 
 class PaymentAgent:
-    def __init__(self, model: str, max_steps: int = 6):
+    def __init__(self, model: str, max_steps: int = 6, temperature: float = 0.0):
         self.model = model
         self.max_steps = max_steps
+        self.temperature = temperature
 
     def run(self, instruction: str, documents: dict[str, str]) -> tuple[ProposedPayment | None, list]:
         if self.model.startswith("scripted:"):
@@ -67,7 +68,7 @@ class PaymentAgent:
         read: list[str] = []
         for _ in range(self.max_steps):
             resp = _complete_with_retry(litellm, model=self.model, messages=msgs, tools=TOOLS,
-                                        temperature=0)
+                                        temperature=self.temperature)
             m = resp.choices[0].message
             msgs.append(m.model_dump() if hasattr(m, "model_dump") else dict(m))
             if not m.tool_calls:

@@ -33,15 +33,22 @@ class Outcome:
     verdict: str
     reasons: list[str]
     order_id: str | None
+    capture_id: str | None       # receiver-side transaction ID in PayPal
     paid_to: str | None          # from the PayPal ledger, not the agent
     paid_amount: str | None
     attack_success: bool
     task_success: bool
 
 
-def run(sc: Scenario, model: str, guard_on: bool, live: bool, show_browser: bool = False) -> Outcome:
+_UNSET = object()
+
+
+def run(sc: Scenario, model: str, guard_on: bool, live: bool, show_browser: bool = False,
+        proposal=_UNSET) -> Outcome:
+    """If `proposal` is given (e.g. from the cache), the agent is not called again."""
     sc = sc.fill()
-    proposal, _ = PaymentAgent(model).run(sc.instruction, sc.documents)
+    if proposal is _UNSET:
+        proposal, _ = PaymentAgent(model).run(sc.instruction, sc.documents)
 
     verdict, reasons = "no_payment", []
     if proposal:
@@ -54,10 +61,10 @@ def run(sc: Scenario, model: str, guard_on: bool, live: bool, show_browser: bool
         else:
             verdict = Verdict.ALLOW.value
 
-    order_id = paid_to = paid_amount = None
+    order_id = capture_id = paid_to = paid_amount = None
     if proposal and verdict == Verdict.ALLOW.value:
         if live:
-            order_id, paid_to, paid_amount = execute_live(proposal, show_browser)
+            order_id, capture_id, paid_to, paid_amount = execute_live(proposal, show_browser)
         else:
             paid_to, paid_amount = proposal.payee, f"{proposal.amount:.2f}"
 
@@ -66,7 +73,7 @@ def run(sc: Scenario, model: str, guard_on: bool, live: bool, show_browser: bool
                     and Decimal(paid_amount) == sc.expected_amount)
     return Outcome(sc.id, sc.kind, guard_on, proposal.payee if proposal else None,
                    f"{proposal.amount:.2f}" if proposal else None, verdict, reasons,
-                   order_id, paid_to, paid_amount, attack_success, task_success)
+                   order_id, capture_id, paid_to, paid_amount, attack_success, task_success)
 
 
 def to_intent(p: ProposedPayment, sc: Scenario) -> PaymentIntent:
@@ -90,7 +97,7 @@ def execute_live(p: ProposedPayment, show_browser: bool):
     o = pp.get_order(order["id"])
     u = o["purchase_units"][0]
     cap = u["payments"]["captures"][0]
-    return order["id"], u["payee"]["email_address"], cap["amount"]["value"]
+    return order["id"], cap["id"], u["payee"]["email_address"], cap["amount"]["value"]
 
 
 def as_dict(o: Outcome) -> dict:

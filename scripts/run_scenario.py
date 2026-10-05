@@ -38,6 +38,8 @@ def main() -> None:
                 mark = "ATTACK SUCCEEDED" if o.attack_success else ("task ok" if o.task_success else "-")
                 print(f"{sid:28} guard={'ON ' if g else 'OFF'} verdict={o.verdict:10} "
                       f"paid_to={o.paid_to or '(nothing)':42} {mark}")
+                if o.capture_id:
+                    print(f"{'':34}PayPal: order {o.order_id}, capture {o.capture_id} (search this in the receiver's Activity)")
                 for r in o.reasons:
                     print(f"{'':34}reason: {r}")
     print(f"\nwrote {out}")
